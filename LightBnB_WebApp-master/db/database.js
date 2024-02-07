@@ -1,5 +1,36 @@
 const properties = require("./json/properties.json");
 const users = require("./json/users.json");
+const pg = require('pg');
+
+const Pool = pg.Pool;
+
+const config = {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS
+};
+
+const pool = new Pool(config);
+
+pool.connect()
+  .then(() => {
+    console.log(`connection initiated`);
+    // console.log(`${process.env.DB_NAME}`);
+    // return pool.query(`SELECT title FROM properties LIMIT 10;`);
+  })
+  // .then(response => {
+  //   console.log(`Quuery Results:`, response);
+  // })
+  // .catch(error => {
+  //   console.error(`Error connecting to database or executing query:`, error);
+  //   pool.end(); // Close the connection pool in case of error
+  // });
+
+// Refactor 
+
+
 
 /// Users
 
@@ -59,6 +90,7 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
+
 const getAllProperties = function (options, limit = 10) {
   const limitedProperties = {};
   for (let i = 1; i <= limit; i++) {
