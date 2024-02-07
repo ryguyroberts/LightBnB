@@ -16,7 +16,7 @@ const pool = new Pool(config);
 
 pool.connect()
   .then(() => {
-    console.log(`connection initiated`);
+    getAllProperties()
     // console.log(`${process.env.DB_NAME}`);
     // return pool.query(`SELECT title FROM properties LIMIT 10;`);
   })
@@ -27,9 +27,6 @@ pool.connect()
   //   console.error(`Error connecting to database or executing query:`, error);
   //   pool.end(); // Close the connection pool in case of error
   // });
-
-// Refactor 
-
 
 
 /// Users
@@ -83,21 +80,37 @@ const getAllReservations = function (guest_id, limit = 10) {
 };
 
 /// Properties
-
 /**
  * Get all properties.
  * @param {{}} options An object containing query options.
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-
-const getAllProperties = function (options, limit = 10) {
-  const limitedProperties = {};
-  for (let i = 1; i <= limit; i++) {
-    limitedProperties[i] = properties[i];
-  }
-  return Promise.resolve(limitedProperties);
+// New
+const getAllProperties = (options, limit = 10) => {
+  return pool
+    .query(`
+      SELECT * FROM properties
+        LIMIT $1;
+      `,
+      [limit])
+    .then((result) => {
+      return result.rows
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
+
+// Old
+// const getAllProperties = function (options, limit = 10) {
+
+//   const limitedProperties = {};
+//   for (let i = 1; i <= limit; i++) {
+//     limitedProperties[i] = properties[i];
+//   }
+//   return Promise.resolve(limitedProperties);
+// };
 
 /**
  * Add a property to the database
