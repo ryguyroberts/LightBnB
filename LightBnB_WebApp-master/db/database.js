@@ -14,19 +14,20 @@ const config = {
 
 const pool = new Pool(config);
 
-pool.connect()
-  .then(() => {
-    getAllProperties()
-    // console.log(`${process.env.DB_NAME}`);
-    // return pool.query(`SELECT title FROM properties LIMIT 10;`);
-  })
-  // .then(response => {
-  //   console.log(`Quuery Results:`, response);
-  // })
-  // .catch(error => {
-  //   console.error(`Error connecting to database or executing query:`, error);
-  //   pool.end(); // Close the connection pool in case of error
-  // });
+// Test driver code
+// pool.connect()
+//   .then(() => {
+//     getAllProperties()
+//     // console.log(`${process.env.DB_NAME}`);
+//     // return pool.query(`SELECT title FROM properties LIMIT 10;`);
+//   })
+//   // .then(response => {
+//   //   console.log(`Quuery Results:`, response);
+//   // })
+//   // .catch(error => {
+//   //   console.error(`Error connecting to database or executing query:`, error);
+//   //   pool.end(); // Close the connection pool in case of error
+//   // });
 
 
 /// Users
@@ -36,15 +37,30 @@ pool.connect()
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
+
 const getUserWithEmail = function (email) {
-  let resolvedUser = null;
-  for (const userId in users) {
-    const user = users[userId];
-    if (user && user.email.toLowerCase() === email.toLowerCase()) {
-      resolvedUser = user;
-    }
-  }
-  return Promise.resolve(resolvedUser);
+  return pool
+    .query(`
+      SELECT name, email, password, id FROM users
+        WHERE email = $1;
+    `,
+    [email]
+    )
+    .then((result) => {
+      if (result.rows.length > 0) {
+        return {
+          name: result.rows[0].name,
+          email: result.rows[0].email,
+          password: result.rows[0].password,
+          id: result.rows[0].id
+        };
+      } else {
+        return null;
+      }  
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
 
 /**
@@ -52,21 +68,60 @@ const getUserWithEmail = function (email) {
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
+// refactor
 const getUserWithId = function (id) {
-  return Promise.resolve(users[id]);
+  return pool
+    .query(`
+      SELECT name, email, password, id FROM users
+        WHERE id = $1;
+    `,
+    [id]
+    )
+    .then((result) => {
+      if (result.rows.length > 0) {
+        return {
+          name: result.rows[0].name,
+          email: result.rows[0].email,
+          password: result.rows[0].password,
+          id: result.rows[0].id
+        };
+      } else {
+        return null;
+      }  
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
+
 
 /**
  * Add a new user to the database.
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
+
 const addUser = function (user) {
-  const userId = Object.keys(users).length + 1;
-  user.id = userId;
-  users[userId] = user;
-  return Promise.resolve(user);
-};
+  return pool
+    .query(`
+      INSERT INTO users (name, email, password)
+      VALUES ($1, $2, $3)
+      RETURNING *;
+    `,
+    [user.name, user.email, user.password]
+    )
+    .then((result) => {
+        return {
+          name: result.rows[0].name,
+          email: result.rows[0].email,
+          password: result.rows[0].password,
+          id: result.rows[0].id
+        };
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
+}
 
 /// Reservations
 
@@ -86,7 +141,7 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-// New
+
 const getAllProperties = (options, limit = 10) => {
   return pool
     .query(`
@@ -102,15 +157,6 @@ const getAllProperties = (options, limit = 10) => {
     });
 };
 
-// Old
-// const getAllProperties = function (options, limit = 10) {
-
-//   const limitedProperties = {};
-//   for (let i = 1; i <= limit; i++) {
-//     limitedProperties[i] = properties[i];
-//   }
-//   return Promise.resolve(limitedProperties);
-// };
 
 /**
  * Add a property to the database
