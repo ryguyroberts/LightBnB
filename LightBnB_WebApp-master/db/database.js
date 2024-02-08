@@ -160,13 +160,82 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 
+// const getAllProperties1 = (options, limit = 10) => {
+//   return pool
+//     .query(`
+//       SELECT * FROM properties
+//         LIMIT $1;
+//       `,
+//       [limit])
+//     .then((result) => {
+//       return result.rows
+//     })
+//     .catch((err) => {
+//       console.log(err.message);
+//     });
+// };
+// Refactor refactor
 const getAllProperties = (options, limit = 10) => {
+  const queryParams= [];
+  // 
+
+  let queryString = `
+    SELECT properties.*, avg(property_reviews.rating) as average_rating
+    FROM properties
+    JOIN property_reviews ON properties.id = property_id
+    `;
+
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+  }
+
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    queryString += `AND owner_id = $${queryParams.length} `;
+  }
+
+  if (options.minimum_price_per_night) {
+    const minPriceInCents = parseFloat(options.minimum_price_per_night) * 100;
+    queryParams.push(minPriceInCents);
+    queryString += `AND cost_per_night > $${queryParams.length}`;
+  }
+
+  if (options.maximum_price_per_night) {
+    const maxPriceInCents = parseFloat(options.maximum_price_per_night) * 100;
+    queryParams.push(maxPriceInCents);
+    queryString += `AND cost_per_night < ($${queryParams.length}) `;
+  }
+
+  // Deal with not using having on aggregate min rating by performing a sub q first.
+  let subQueryString = '';
+
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+
+    subQueryString = `
+      SELECT property_id
+      FROM property_reviews
+      GROUP BY property_id
+      HAVING avg(rating) >= $${queryParams.length}
+    `;
+  }
+
+  if (subQueryString) {
+    queryString += `AND properties.id IN (${subQueryString}) `;
+  }
+
+
+  queryParams.push(limit);
+  queryString += `
+    GROUP BY properties.id
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+  `;
+  console.log(queryString, queryParams);
+
   return pool
-    .query(`
-      SELECT * FROM properties
-        LIMIT $1;
-      `,
-      [limit])
+    .query(queryString, queryParams)
     .then((result) => {
       return result.rows
     })
@@ -174,7 +243,6 @@ const getAllProperties = (options, limit = 10) => {
       console.log(err.message);
     });
 };
-
 
 /**
  * Add a property to the database
